@@ -1,1 +1,0 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/vite-env.d.ts","./src/components/CategoryTabs.tsx","./src/components/EmptyState.tsx","./src/components/ItemCard.tsx","./src/components/ItemFormModal.tsx","./src/components/ItemList.tsx","./src/components/StatusTabs.tsx","./src/hooks/useItems.ts","./src/lib/firebase.ts"],"version":"5.9.3"}
