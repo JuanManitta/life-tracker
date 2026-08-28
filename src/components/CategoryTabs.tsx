@@ -18,9 +18,11 @@ const ORDER: CategoryFilter[] = ['all', 'books', 'games', 'movies', 'series', 'c
 export default function CategoryTabs({
   value,
   onChange,
+  counts,
 }: {
   value: CategoryFilter
   onChange: (v: CategoryFilter) => void
+  counts: Record<CategoryFilter, number>
 }) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
@@ -28,6 +30,7 @@ export default function CategoryTabs({
         const Icon = ICONS[cat]
         const label = cat === 'all' ? 'Todos' : CATEGORY_LABELS[cat]
         const active = value === cat
+        const count = counts[cat] ?? 0
         return (
           <button
             key={cat}
@@ -41,6 +44,13 @@ export default function CategoryTabs({
           >
             <Icon size={16} />
             {label}
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-xs font-semibold leading-none ${
+                active ? 'bg-white/20 text-white' : 'bg-navy-700 text-slate-400'
+              }`}
+            >
+              {count}
+            </span>
           </button>
         )
       })}
