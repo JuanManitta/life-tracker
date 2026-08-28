@@ -90,13 +90,13 @@ export default function ItemFormModal({
             <label className="block text-xs font-medium text-slate-400 mb-1.5">
               Categoría
             </label>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
                 <button
                   key={cat}
                   type="button"
                   onClick={() => setCategory(cat)}
-                  className={`text-[11px] py-2 rounded-lg border font-medium ${
+                  className={`text-xs py-2 px-1 rounded-lg border font-medium truncate ${
                     category === cat
                       ? 'border-accent bg-accent/10 text-accent-light'
                       : 'border-navy-700 text-slate-400'

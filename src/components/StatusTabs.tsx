@@ -13,7 +13,7 @@ export default function StatusTabs({
   onChange: (v: StatusFilter) => void
 }) {
   return (
-    <div className="mt-2 flex gap-1.5 overflow-x-auto scrollbar-none">
+    <div className="flex gap-1.5 overflow-x-auto -mx-4 px-4 pb-0.5 scrollbar-none">
       {ORDER.map((s) => {
         const label = s === 'all' ? 'Todo' : STATUS_LABELS[s]
         const active = value === s

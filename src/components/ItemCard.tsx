@@ -41,7 +41,7 @@ export default function ItemCard({
   ]
 
   return (
-    <div className="bg-navy-850 border border-navy-700/60 rounded-xl p-3.5 flex gap-3">
+    <div className="bg-navy-850 border border-navy-700/60 rounded-xl p-3.5 flex items-start gap-3">
       <button
         type="button"
         onClick={() => onEdit(item)}
@@ -61,7 +61,7 @@ export default function ItemCard({
         </div>
       </button>
 
-      <div className="flex flex-col items-end justify-between shrink-0">
+      <div className="flex flex-col items-end gap-2 shrink-0">
         <span
           className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[item.status]}`}
         >
@@ -71,7 +71,7 @@ export default function ItemCard({
           value={item.status}
           onChange={(e) => onStatusChange(item.id, e.target.value as Status)}
           onClick={(e) => e.stopPropagation()}
-          className="mt-2 text-[11px] bg-navy-800 border border-navy-600 rounded-md px-1.5 py-1 text-slate-300"
+          className="text-[11px] bg-navy-800 border border-navy-600 rounded-md px-1.5 py-1 text-slate-300"
         >
           <option value="backlog">Pendiente</option>
           <option value="ongoing">En curso</option>

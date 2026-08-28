@@ -23,7 +23,7 @@ export default function CategoryTabs({
   onChange: (v: CategoryFilter) => void
 }) {
   return (
-    <div className="mt-3 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+    <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
       {ORDER.map((cat) => {
         const Icon = ICONS[cat]
         const label = cat === 'all' ? 'Todos' : CATEGORY_LABELS[cat]
