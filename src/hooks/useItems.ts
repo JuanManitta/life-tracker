@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   onSnapshot,
   orderBy,
@@ -25,6 +26,20 @@ function loadLocal(): TrackedItem[] {
 
 function saveLocal(items: TrackedItem[]) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(items))
+}
+
+/**
+ * Firestore rejects `undefined` field values outright. When a form field is
+ * cleared we represent it as `undefined` in the TrackedItem, so before
+ * writing to Firestore we translate those into `deleteField()` sentinels
+ * (removing the field) instead of throwing or leaving stale data behind.
+ */
+function toFirestorePayload(item: TrackedItem): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(item)) {
+    payload[key] = value === undefined ? deleteField() : value
+  }
+  return payload
 }
 
 /**
@@ -60,7 +75,7 @@ export function useItems(userId: string | null) {
     async (item: TrackedItem) => {
       if (usingCloud && db && userId) {
         const ref = doc(db, 'users', userId, 'items', item.id)
-        await setDoc(ref, item, { merge: true })
+        await setDoc(ref, toFirestorePayload(item), { merge: true })
       } else {
         setItems((prev) => {
           const exists = prev.some((i) => i.id === item.id)
