@@ -20,7 +20,7 @@ export interface BookItem extends BaseItem {
 
 export interface GameItem extends BaseItem {
   category: 'games'
-  platform?: string
+  developer?: string
 }
 
 export interface MovieItem extends BaseItem {
@@ -57,15 +57,15 @@ export const STATUS_LABELS: Record<Status, string> = {
 
 export const CATEGORY_CREATOR_LABEL: Record<Category, string> = {
   books: 'Autor',
-  games: 'Plataforma',
+  games: 'Desarrolladora',
   movies: 'Director',
   series: 'Creador',
   comics: 'Autor',
 }
 
-export const CATEGORY_CREATOR_FIELD: Record<Category, 'author' | 'platform' | 'director' | 'creator'> = {
+export const CATEGORY_CREATOR_FIELD: Record<Category, 'author' | 'developer' | 'director' | 'creator'> = {
   books: 'author',
-  games: 'platform',
+  games: 'developer',
   movies: 'director',
   series: 'creator',
   comics: 'author',

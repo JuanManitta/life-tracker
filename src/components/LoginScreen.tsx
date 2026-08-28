@@ -14,7 +14,7 @@ export default function LoginScreen({
       <div className="h-16 w-16 rounded-2xl bg-navy-800 flex items-center justify-center mb-5">
         <span className="text-2xl">🎬</span>
       </div>
-      <h1 className="text-2xl font-bold text-slate-50">Ocio Tracker</h1>
+      <h1 className="text-2xl font-bold text-slate-50">Life Tracker</h1>
       <p className="text-sm text-slate-400 mt-2 max-w-xs">
         Llevá el registro de tus libros, juegos, películas, series y comics en
         un solo lugar.

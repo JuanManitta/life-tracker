@@ -27,10 +27,12 @@ function formatDate(ts: number) {
 
 export default function ItemCard({
   item,
+  compact = false,
   onEdit,
   onStatusChange,
 }: {
   item: TrackedItem
+  compact?: boolean
   onEdit: (item: TrackedItem) => void
   onStatusChange: (id: string, status: Status) => void
 }) {
@@ -39,6 +41,48 @@ export default function ItemCard({
   const creatorValue = (item as unknown as Record<string, string | undefined>)[
     creatorField
   ]
+
+  if (compact) {
+    return (
+      <div className="bg-navy-850 border border-navy-700/60 rounded-xl p-3 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => onEdit(item)}
+          className="flex flex-col gap-2 text-left min-w-0"
+        >
+          <div className="h-9 w-9 shrink-0 rounded-lg bg-navy-700 flex items-center justify-center text-accent-light">
+            <Icon size={18} />
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-100 truncate text-sm">
+              {item.title}
+            </p>
+            {creatorValue && (
+              <p className="text-xs text-slate-400 truncate">{creatorValue}</p>
+            )}
+          </div>
+        </button>
+
+        <div className="flex items-center justify-between gap-1">
+          <span
+            className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full truncate ${STATUS_STYLES[item.status]}`}
+          >
+            {STATUS_LABELS[item.status]}
+          </span>
+          <select
+            value={item.status}
+            onChange={(e) => onStatusChange(item.id, e.target.value as Status)}
+            onClick={(e) => e.stopPropagation()}
+            className="text-[10px] bg-navy-800 border border-navy-600 rounded-md px-1 py-0.5 text-slate-300 min-w-0"
+          >
+            <option value="backlog">Pendiente</option>
+            <option value="ongoing">En curso</option>
+            <option value="done">Terminado</option>
+          </select>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-navy-850 border border-navy-700/60 rounded-xl p-3.5 flex items-start gap-3">

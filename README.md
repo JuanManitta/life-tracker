@@ -1,4 +1,4 @@
-# Ocio Tracker
+# Life Tracker
 
 Web app mobile-first para trackear tu ocio: libros, juegos, películas, series y comics. Cada ítem tiene estado (pendiente, en curso, terminado) y fechas de creación/edición automáticas.
 

@@ -1,9 +1,10 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
-import { Plus, LayoutList, BarChart3, LogOut } from 'lucide-react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Plus, LayoutList, BarChart3, LogOut, Rows3, Grid2x2, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useItems } from '@/hooks/useItems'
 import type { Category, Status, TrackedItem } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
+import { isEnrichmentConfigured, syncMissingCreators } from '@/lib/enrichment'
 import CategoryTabs from '@/components/CategoryTabs'
 import StatusTabs from '@/components/StatusTabs'
 import ItemList from '@/components/ItemList'
@@ -16,6 +17,15 @@ const StatsView = lazy(() => import('@/components/StatsView'))
 type CategoryFilter = 'all' | Category
 type StatusFilter = 'all' | Status
 type View = 'home' | 'stats'
+type Columns = 1 | 2
+
+const COLUMNS_KEY = 'life-tracker-columns'
+
+function getInitialColumns(): Columns {
+  if (typeof window === 'undefined') return 1
+  const stored = window.localStorage.getItem(COLUMNS_KEY)
+  return stored === '2' ? 2 : 1
+}
 
 export default function App() {
   const {
@@ -71,6 +81,19 @@ function MainApp({
   const [modalOpen, setModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<TrackedItem | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [columns, setColumns] = useState<Columns>(getInitialColumns)
+  const [syncing, setSyncing] = useState(false)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    window.localStorage.setItem(COLUMNS_KEY, String(columns))
+  }, [columns])
+
+  useEffect(() => {
+    if (!syncMessage) return
+    const timeout = setTimeout(() => setSyncMessage(null), 4000)
+    return () => clearTimeout(timeout)
+  }, [syncMessage])
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -130,7 +153,7 @@ function MainApp({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold tracking-tight text-slate-50">
-              Ocio Tracker
+              Life Tracker
             </h1>
             <p className="text-xs text-slate-400">
               {usingCloud ? 'Sincronizado en la nube' : 'Guardado en este dispositivo'}
@@ -192,6 +215,30 @@ function MainApp({
                           {userName}
                         </p>
                       )}
+                      {isEnrichmentConfigured() && (
+                        <button
+                          type="button"
+                          disabled={syncing}
+                          onClick={async () => {
+                            setSyncing(true)
+                            setSyncMessage(null)
+                            try {
+                              const result = await syncMissingCreators(items, upsertItem)
+                              setSyncMessage(
+                                result.updated === 0
+                                  ? 'No había nada para completar'
+                                  : `Completados ${result.updated} ítem${result.updated === 1 ? '' : 's'}`
+                              )
+                            } finally {
+                              setSyncing(false)
+                            }
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-navy-700 disabled:opacity-50"
+                        >
+                          <RefreshCw size={15} className={syncing ? 'animate-spin' : ''} />
+                          {syncing ? 'Buscando…' : 'Sync authors'}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => {
@@ -210,6 +257,9 @@ function MainApp({
             )}
           </div>
         </div>
+        {syncMessage && (
+          <p className="text-xs text-accent-light -mt-1">{syncMessage}</p>
+        )}
         {view === 'home' && (
           <div className="flex flex-col gap-2">
             <CategoryTabs value={categoryFilter} onChange={setCategoryFilter} counts={categoryCounts} />
@@ -219,6 +269,32 @@ function MainApp({
       </header>
 
       <main className="flex-1 flex flex-col px-4 pt-4 pb-28">
+        {view === 'home' && !loading && (
+          <div className="flex gap-1 bg-navy-800 rounded-full p-1 self-start mb-3">
+            <button
+              type="button"
+              onClick={() => setColumns(1)}
+              aria-label="Ver en 1 columna"
+              aria-pressed={columns === 1}
+              className={`h-7 w-7 rounded-full flex items-center justify-center transition-colors ${
+                columns === 1 ? 'bg-accent text-white' : 'text-slate-400'
+              }`}
+            >
+              <Rows3 size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setColumns(2)}
+              aria-label="Ver en 2 columnas"
+              aria-pressed={columns === 2}
+              className={`h-7 w-7 rounded-full flex items-center justify-center transition-colors ${
+                columns === 2 ? 'bg-accent text-white' : 'text-slate-400'
+              }`}
+            >
+              <Grid2x2 size={14} />
+            </button>
+          </div>
+        )}
         {loading ? (
           <div className="flex-1 flex justify-center items-start pt-16 text-slate-500 text-sm">
             Cargando…
@@ -245,6 +321,7 @@ function MainApp({
         ) : (
           <ItemList
             items={filteredItems}
+            columns={columns}
             onEdit={openEditModal}
             onStatusChange={updateStatus}
           />
@@ -256,7 +333,7 @@ function MainApp({
           type="button"
           onClick={openAddModal}
           aria-label="Agregar"
-          className="fixed bottom-6 right-5 z-30 h-14 w-14 rounded-full bg-accent text-white flex items-center justify-center shadow-fab active:scale-95 transition-transform safe-bottom"
+          className="fixed right-5 z-30 h-14 w-14 rounded-full bg-accent text-white flex items-center justify-center shadow-fab active:scale-95 transition-transform fab-safe-bottom"
         >
           <Plus size={28} strokeWidth={2.5} />
         </button>
