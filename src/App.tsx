@@ -10,7 +10,6 @@ import ItemList from '@/components/ItemList'
 import ItemFormModal from '@/components/ItemFormModal'
 import EmptyState from '@/components/EmptyState'
 import LoginScreen from '@/components/LoginScreen'
-import { seedItems } from '@/seedData'
 
 const StatsView = lazy(() => import('@/components/StatsView'))
 
@@ -204,21 +203,6 @@ function MainApp({
                         <LogOut size={15} />
                         Cerrar sesión
                       </button>
-                      {import.meta.env.DEV && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            setMenuOpen(false)
-                            for (const it of seedItems) {
-                              await upsertItem(it)
-                            }
-                            alert(`Importados ${seedItems.length} items`)
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-navy-700 border-t border-navy-700 mt-1"
-                        >
-                          Importar seed (una vez)
-                        </button>
-                      )}
                     </div>
                   </>
                 )}
