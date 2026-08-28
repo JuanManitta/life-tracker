@@ -20,7 +20,7 @@ npm run dev
 ## Configurar Firebase
 
 1. Creá un proyecto en [Firebase Console](https://console.firebase.google.com/).
-2. Habilitá **Authentication > Sign-in method > Anónimo**.
+2. Habilitá **Authentication > Sign-in method > Google**.
 3. Habilitá **Firestore Database** (modo producción) y aplicá las reglas de `firestore.rules`.
 4. Copiá `.env.example` a `.env` y completá las credenciales de tu app web de Firebase:
 
@@ -28,7 +28,7 @@ npm run dev
 cp .env.example .env
 ```
 
-Sin estas variables, la app funciona igual pero guarda los datos solo en el navegador (localStorage).
+Sin estas variables, la app funciona igual pero guarda los datos solo en el navegador (localStorage) y no pide login. Con las variables cargadas, se requiere iniciar sesión con Google antes de usar la app.
 
 ## Deploy en Vercel
 

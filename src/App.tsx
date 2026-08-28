@@ -1,5 +1,6 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
-import { Plus, LayoutList, BarChart3 } from 'lucide-react'
+import { Plus, LayoutList, BarChart3, LogOut } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 import { useItems } from '@/hooks/useItems'
 import type { Category, Status, TrackedItem } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
@@ -8,6 +9,7 @@ import StatusTabs from '@/components/StatusTabs'
 import ItemList from '@/components/ItemList'
 import ItemFormModal from '@/components/ItemFormModal'
 import EmptyState from '@/components/EmptyState'
+import LoginScreen from '@/components/LoginScreen'
 
 const StatsView = lazy(() => import('@/components/StatsView'))
 
@@ -16,13 +18,59 @@ type StatusFilter = 'all' | Status
 type View = 'home' | 'stats'
 
 export default function App() {
+  const {
+    user,
+    loading: authLoading,
+    signingIn,
+    error: authError,
+    signIn,
+    signOut,
+    isFirebaseConfigured,
+  } = useAuth()
+
+  if (isFirebaseConfigured && authLoading) {
+    return (
+      <div className="min-h-screen bg-navy-900 flex items-center justify-center text-slate-500 text-sm">
+        Cargando…
+      </div>
+    )
+  }
+
+  if (isFirebaseConfigured && !user) {
+    return (
+      <LoginScreen onSignIn={signIn} signingIn={signingIn} error={authError} />
+    )
+  }
+
+  return (
+    <MainApp
+      userId={user?.uid ?? null}
+      userName={user?.displayName ?? null}
+      userPhoto={user?.photoURL ?? null}
+      onSignOut={isFirebaseConfigured ? signOut : undefined}
+    />
+  )
+}
+
+function MainApp({
+  userId,
+  userName,
+  userPhoto,
+  onSignOut,
+}: {
+  userId: string | null
+  userName: string | null
+  userPhoto: string | null
+  onSignOut?: () => void
+}) {
   const { items, loading, usingCloud, upsertItem, updateStatus, deleteItem } =
-    useItems()
+    useItems(userId)
   const [view, setView] = useState<View>('home')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<TrackedItem | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -56,31 +104,78 @@ export default function App() {
               {usingCloud ? 'Sincronizado en la nube' : 'Guardado en este dispositivo'}
             </p>
           </div>
-          <div className="flex gap-1 bg-navy-800 rounded-full p-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => setView('home')}
-              aria-label="Inicio"
-              className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors ${
-                view === 'home'
-                  ? 'bg-accent text-white'
-                  : 'text-slate-400'
-              }`}
-            >
-              <LayoutList size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('stats')}
-              aria-label="Estadísticas"
-              className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors ${
-                view === 'stats'
-                  ? 'bg-accent text-white'
-                  : 'text-slate-400'
-              }`}
-            >
-              <BarChart3 size={16} />
-            </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex gap-1 bg-navy-800 rounded-full p-1">
+              <button
+                type="button"
+                onClick={() => setView('home')}
+                aria-label="Inicio"
+                className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors ${
+                  view === 'home' ? 'bg-accent text-white' : 'text-slate-400'
+                }`}
+              >
+                <LayoutList size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('stats')}
+                aria-label="Estadísticas"
+                className={`h-8 w-8 rounded-full flex items-center justify-center transition-colors ${
+                  view === 'stats' ? 'bg-accent text-white' : 'text-slate-400'
+                }`}
+              >
+                <BarChart3 size={16} />
+              </button>
+            </div>
+
+            {onSignOut && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  aria-label="Cuenta"
+                  className="h-8 w-8 rounded-full overflow-hidden bg-navy-700 border border-navy-600 flex items-center justify-center text-xs font-semibold text-slate-200"
+                >
+                  {userPhoto ? (
+                    <img
+                      src={userPhoto}
+                      alt={userName ?? 'Usuario'}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    (userName?.[0] ?? '?').toUpperCase()
+                  )}
+                </button>
+
+                {menuOpen && (
+                  <>
+                    <button
+                      aria-label="Cerrar menú"
+                      className="fixed inset-0 z-20"
+                      onClick={() => setMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 top-10 z-30 w-44 bg-navy-800 border border-navy-700 rounded-xl shadow-lg py-1.5">
+                      {userName && (
+                        <p className="px-3 py-1.5 text-xs text-slate-400 truncate border-b border-navy-700 mb-1">
+                          {userName}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false)
+                          onSignOut()
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-navy-700"
+                      >
+                        <LogOut size={15} />
+                        Cerrar sesión
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
         {view === 'home' && (
@@ -138,9 +233,7 @@ export default function App() {
       {modalOpen && (
         <ItemFormModal
           initialItem={editingItem}
-          defaultCategory={
-            categoryFilter === 'all' ? 'books' : categoryFilter
-          }
+          defaultCategory={categoryFilter === 'all' ? 'books' : categoryFilter}
           onClose={() => setModalOpen(false)}
           onSave={async (item) => {
             await upsertItem(item)

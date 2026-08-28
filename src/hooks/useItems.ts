@@ -9,7 +9,7 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore'
-import { db, ensureAuth, isFirebaseConfigured } from '@/lib/firebase'
+import { db } from '@/lib/firebase'
 import type { TrackedItem } from '@/types'
 
 const LOCAL_KEY = 'ocio-tracker-items-v1'
@@ -27,39 +27,34 @@ function saveLocal(items: TrackedItem[]) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(items))
 }
 
-export function useItems() {
+/**
+ * @param userId - Firebase uid when signed in with Google, or null to use
+ * the local-only (localStorage) fallback mode.
+ */
+export function useItems(userId: string | null) {
   const [items, setItems] = useState<TrackedItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [usingCloud, setUsingCloud] = useState(false)
+  const usingCloud = Boolean(db && userId)
 
   useEffect(() => {
     let unsubscribe: (() => void) | undefined
+    setLoading(true)
 
-    async function init() {
-      if (isFirebaseConfigured && db) {
-        const user = await ensureAuth()
-        if (user) {
-          setUserId(user.uid)
-          setUsingCloud(true)
-          const itemsRef = collection(db, 'users', user.uid, 'items')
-          const q = query(itemsRef, orderBy('updatedAt', 'desc'))
-          unsubscribe = onSnapshot(q, (snapshot) => {
-            const next = snapshot.docs.map((d) => d.data() as TrackedItem)
-            setItems(next)
-            setLoading(false)
-          })
-          return
-        }
-      }
-      // Fallback: local-only mode
+    if (db && userId) {
+      const itemsRef = collection(db, 'users', userId, 'items')
+      const q = query(itemsRef, orderBy('updatedAt', 'desc'))
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const next = snapshot.docs.map((d) => d.data() as TrackedItem)
+        setItems(next)
+        setLoading(false)
+      })
+    } else {
       setItems(loadLocal().sort((a, b) => b.updatedAt - a.updatedAt))
       setLoading(false)
     }
 
-    init()
     return () => unsubscribe?.()
-  }, [])
+  }, [userId])
 
   const upsertItem = useCallback(
     async (item: TrackedItem) => {

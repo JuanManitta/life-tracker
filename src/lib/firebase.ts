@@ -1,8 +1,10 @@
 import { initializeApp } from 'firebase/app'
 import {
+  GoogleAuthProvider,
   getAuth,
   onAuthStateChanged,
-  signInAnonymously,
+  signInWithPopup,
+  signOut,
   type User,
 } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
@@ -25,30 +27,29 @@ const app = isFirebaseConfigured ? initializeApp(firebaseConfig) : null
 export const auth = app ? getAuth(app) : null
 export const db = app ? getFirestore(app) : null
 
+const googleProvider = new GoogleAuthProvider()
+
+export type { User }
+
 /**
- * Ensures there is a signed-in user (anonymous auth) and resolves with it.
- * Anonymous auth lets each device/browser keep its own private data
- * without requiring the user to create an account.
+ * Subscribes to auth state changes. Calls back immediately with the current
+ * user (or null) and on every subsequent change. Returns an unsubscribe fn.
  */
-export function ensureAuth(): Promise<User | null> {
-  return new Promise((resolve, reject) => {
-    if (!auth) {
-      resolve(null)
-      return
-    }
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (user) => {
-        unsubscribe()
-        if (user) {
-          resolve(user)
-        } else {
-          signInAnonymously(auth)
-            .then((cred) => resolve(cred.user))
-            .catch(reject)
-        }
-      },
-      reject
-    )
-  })
+export function subscribeAuth(callback: (user: User | null) => void) {
+  if (!auth) {
+    callback(null)
+    return () => {}
+  }
+  return onAuthStateChanged(auth, callback)
+}
+
+export async function signInWithGoogle(): Promise<User | null> {
+  if (!auth) return null
+  const cred = await signInWithPopup(auth, googleProvider)
+  return cred.user
+}
+
+export async function signOutUser(): Promise<void> {
+  if (!auth) return
+  await signOut(auth)
 }
