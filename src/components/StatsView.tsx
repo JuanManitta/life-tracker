@@ -24,6 +24,14 @@ const STATUS_COLORS: Record<Status, string> = {
 const STATUS_ORDER: Status[] = ['backlog', 'ongoing', 'done']
 const CATEGORY_ORDER: Category[] = ['books', 'games', 'movies', 'series', 'comics']
 
+const CATEGORY_COLORS: Record<Category, string> = {
+  books: '#5b8def',
+  games: '#a78bfa',
+  movies: '#f472b6',
+  series: '#34d399',
+  comics: '#f59e0b',
+}
+
 const ONE_DAY = 1000 * 60 * 60 * 24
 
 function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -67,34 +75,24 @@ export default function StatsView({ items }: { items: TrackedItem[] }) {
     const categoryTotals = CATEGORY_ORDER.map((cat) => ({
       category: cat,
       total: byCategory[cat].backlog + byCategory[cat].ongoing + byCategory[cat].done,
+      done: byCategory[cat].done,
     }))
     const topCategory = categoryTotals.reduce(
       (max, c) => (c.total > max.total ? c : max),
       categoryTotals[0]
     )
 
-    const oldestBacklog = items
-      .filter((i) => i.status === 'backlog')
-      .sort((a, b) => a.createdAt - b.createdAt)[0]
-    const oldestBacklogDays = oldestBacklog
-      ? Math.floor((now - oldestBacklog.createdAt) / ONE_DAY)
-      : null
-
-    const doneItems = items.filter((i) => i.status === 'done')
-    const avgDaysToFinish =
-      doneItems.length > 0
-        ? Math.round(
-            doneItems.reduce((sum, i) => sum + (i.updatedAt - i.createdAt), 0) /
-              doneItems.length /
-              ONE_DAY
-          )
-        : null
-
     const pieData = STATUS_ORDER.map((s) => ({
       name:
         s === 'backlog' ? 'Pendiente' : s === 'ongoing' ? 'En curso' : 'Terminado',
       value: byStatus[s],
       status: s,
+    })).filter((d) => d.value > 0)
+
+    const doneByCategoryPieData = CATEGORY_ORDER.map((cat) => ({
+      name: CATEGORY_LABELS[cat],
+      value: byCategory[cat].done,
+      category: cat,
     })).filter((d) => d.value > 0)
 
     const barData = CATEGORY_ORDER.map((cat) => ({
@@ -111,9 +109,8 @@ export default function StatsView({ items }: { items: TrackedItem[] }) {
       finishedLast7Days,
       finishedLast30Days,
       topCategory,
-      oldestBacklogDays,
-      avgDaysToFinish,
       pieData,
+      doneByCategoryPieData,
       barData,
     }
   }, [items])
@@ -146,21 +143,8 @@ export default function StatsView({ items }: { items: TrackedItem[] }) {
         <StatCard
           label="Categoría top"
           value={CATEGORY_LABELS[stats.topCategory.category]}
-          hint={`${stats.topCategory.total} ítems`}
+          hint={`${stats.topCategory.done} terminados`}
         />
-        {stats.avgDaysToFinish !== null && (
-          <StatCard
-            label="Promedio para terminar"
-            value={`${stats.avgDaysToFinish}d`}
-          />
-        )}
-        {stats.oldestBacklogDays !== null && (
-          <StatCard
-            label="Pendiente más viejo"
-            value={`${stats.oldestBacklogDays}d`}
-            hint="esperando en backlog"
-          />
-        )}
       </div>
 
       <div className="bg-navy-850 border border-navy-700/60 rounded-xl p-3.5">
@@ -216,6 +200,39 @@ export default function StatsView({ items }: { items: TrackedItem[] }) {
               >
                 {stats.pieData.map((entry) => (
                   <Cell key={entry.status} fill={STATUS_COLORS[entry.status]} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  background: '#0d1224',
+                  border: '1px solid #182247',
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11, color: '#94a3b8' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="bg-navy-850 border border-navy-700/60 rounded-xl p-3.5">
+        <p className="text-sm font-semibold text-slate-200 mb-2">
+          Terminados por categoría
+        </p>
+        <div className="h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={stats.doneByCategoryPieData}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={3}
+              >
+                {stats.doneByCategoryPieData.map((entry) => (
+                  <Cell key={entry.category} fill={CATEGORY_COLORS[entry.category]} />
                 ))}
               </Pie>
               <Tooltip

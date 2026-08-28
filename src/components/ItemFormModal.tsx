@@ -62,7 +62,7 @@ export default function ItemFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
       <button
         aria-label="Cerrar"
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -70,7 +70,7 @@ export default function ItemFormModal({
       />
       <form
         onSubmit={handleSubmit}
-        className="relative z-10 w-full sm:max-w-md bg-navy-850 border border-navy-700 rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto safe-bottom"
+        className="relative z-10 w-full sm:max-w-md bg-navy-850 border border-navy-700 rounded-2xl p-5 max-h-[90vh] overflow-y-auto safe-bottom"
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-slate-50">
