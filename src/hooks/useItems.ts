@@ -94,13 +94,21 @@ export function useItems(userId: string | null) {
   const updateStatus = useCallback(
     async (id: string, status: TrackedItem['status']) => {
       const updatedAt = Date.now()
+      // completedAt is only set when moving into 'done', and cleared when
+      // moving out of it. It must NOT be touched by unrelated edits
+      // (rating, notes, etc.) so it stays a reliable "finished on" date.
+      const completedAt = status === 'done' ? updatedAt : undefined
       if (usingCloud && db && userId) {
         const ref = doc(db, 'users', userId, 'items', id)
-        await updateDoc(ref, { status, updatedAt })
+        await updateDoc(ref, {
+          status,
+          updatedAt,
+          completedAt: completedAt ?? deleteField(),
+        })
       } else {
         setItems((prev) => {
           const next = prev.map((i) =>
-            i.id === id ? { ...i, status, updatedAt } : i
+            i.id === id ? { ...i, status, updatedAt, completedAt } : i
           )
           next.sort((a, b) => b.updatedAt - a.updatedAt)
           saveLocal(next)

@@ -1,14 +1,24 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
-import { Plus, LayoutList, BarChart3, LogOut, Rows3, Grid2x2, RefreshCw } from 'lucide-react'
+import { Plus, LayoutList, BarChart3, LogOut, Rows3, Grid2x2, RefreshCw, Search, X, Copy } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useItems } from '@/hooks/useItems'
 import type { Category, Status, TrackedItem } from '@/types'
 import { CATEGORY_LABELS } from '@/types'
 import { isEnrichmentConfigured, syncMissingCreators } from '@/lib/enrichment'
+import { normalizeText } from '@/lib/normalize'
 import CategoryTabs from '@/components/CategoryTabs'
 import StatusTabs from '@/components/StatusTabs'
+import {
+  DateFilter,
+  monthKeyOf,
+  monthOnlyOf,
+  yearOf,
+  type MonthOnlyKey,
+  type YearKey,
+} from '@/components/MonthFilter'
 import ItemList from '@/components/ItemList'
 import ItemFormModal from '@/components/ItemFormModal'
+import DuplicatesModal, { findDuplicateGroups } from '@/components/DuplicatesModal'
 import EmptyState from '@/components/EmptyState'
 import LoginScreen from '@/components/LoginScreen'
 
@@ -78,9 +88,13 @@ function MainApp({
   const [view, setView] = useState<View>('home')
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [yearFilter, setYearFilter] = useState<'all' | YearKey>('all')
+  const [monthFilter, setMonthFilter] = useState<'all' | MonthOnlyKey>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<TrackedItem | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false)
   const [columns, setColumns] = useState<Columns>(getInitialColumns)
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
@@ -95,15 +109,54 @@ function MainApp({
     return () => clearTimeout(timeout)
   }, [syncMessage])
 
+  useEffect(() => {
+    if (statusFilter !== 'done') {
+      setYearFilter('all')
+      setMonthFilter('all')
+    }
+  }, [statusFilter])
+
   const filteredItems = useMemo(() => {
+    const query = normalizeText(searchQuery.trim())
     return items.filter((item) => {
       const matchesCategory =
         categoryFilter === 'all' || item.category === categoryFilter
       const matchesStatus =
         statusFilter === 'all' || item.status === statusFilter
-      return matchesCategory && matchesStatus
+      const matchesYear =
+        statusFilter !== 'done' ||
+        yearFilter === 'all' ||
+        (item.status === 'done' &&
+          yearOf(monthKeyOf(item.completedAt ?? item.updatedAt)) === yearFilter)
+      const matchesMonth =
+        statusFilter !== 'done' ||
+        monthFilter === 'all' ||
+        (item.status === 'done' &&
+          monthOnlyOf(monthKeyOf(item.completedAt ?? item.updatedAt)) === monthFilter)
+      const matchesSearch = query === '' || normalizeText(item.title).includes(query)
+      return matchesCategory && matchesStatus && matchesYear && matchesMonth && matchesSearch
     })
-  }, [items, categoryFilter, statusFilter])
+  }, [items, categoryFilter, statusFilter, yearFilter, monthFilter, searchQuery])
+
+  const doneYears = useMemo(() => {
+    const keys = new Set<YearKey>()
+    for (const item of items) {
+      if (item.status !== 'done') continue
+      keys.add(yearOf(monthKeyOf(item.completedAt ?? item.updatedAt)))
+    }
+    return Array.from(keys).sort((a, b) => (a < b ? 1 : -1))
+  }, [items])
+
+  const doneMonths = useMemo(() => {
+    const keys = new Set<MonthOnlyKey>()
+    for (const item of items) {
+      if (item.status !== 'done') continue
+      const key = monthKeyOf(item.completedAt ?? item.updatedAt)
+      if (yearFilter !== 'all' && yearOf(key) !== yearFilter) continue
+      keys.add(monthOnlyOf(key))
+    }
+    return Array.from(keys).sort((a, b) => (a < b ? 1 : -1))
+  }, [items, yearFilter])
 
   const categoryCounts = useMemo(() => {
     const counts: Record<'all' | Category, number> = {
@@ -136,6 +189,8 @@ function MainApp({
     }
     return counts
   }, [items, categoryFilter])
+
+  const duplicateCount = useMemo(() => findDuplicateGroups(items).length, [items])
 
   function openAddModal() {
     setEditingItem(null)
@@ -243,6 +298,22 @@ function MainApp({
                         type="button"
                         onClick={() => {
                           setMenuOpen(false)
+                          setDuplicatesOpen(true)
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-navy-700"
+                      >
+                        <Copy size={15} />
+                        Duplicados
+                        {duplicateCount > 0 && (
+                          <span className="ml-auto rounded-full bg-navy-700 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-slate-300">
+                            {duplicateCount}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false)
                           onSignOut()
                         }}
                         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-navy-700"
@@ -262,8 +333,46 @@ function MainApp({
         )}
         {view === 'home' && (
           <div className="flex flex-col gap-2">
+            <div className="relative">
+              <Search
+                size={15}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar por nombre…"
+                className="w-full rounded-md border border-navy-700 bg-navy-800 py-1.5 pl-8 pr-8 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Limpiar búsqueda"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                >
+                  <X size={15} />
+                </button>
+              )}
+            </div>
             <CategoryTabs value={categoryFilter} onChange={setCategoryFilter} counts={categoryCounts} />
             <StatusTabs value={statusFilter} onChange={setStatusFilter} counts={statusCounts} />
+            {statusFilter === 'done' && doneYears.length > 0 && (
+              <div className="flex items-center gap-2">
+                <DateFilter
+                  yearValue={yearFilter}
+                  monthValue={monthFilter}
+                  onYearChange={setYearFilter}
+                  onMonthChange={setMonthFilter}
+                  years={doneYears}
+                  months={doneMonths}
+                />
+                <span className="rounded-full bg-navy-700 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-slate-300">
+                  {filteredItems.length}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </header>
@@ -356,6 +465,14 @@ function MainApp({
                 }
               : undefined
           }
+        />
+      )}
+
+      {duplicatesOpen && (
+        <DuplicatesModal
+          items={items}
+          onClose={() => setDuplicatesOpen(false)}
+          onDelete={deleteItem}
         />
       )}
     </div>

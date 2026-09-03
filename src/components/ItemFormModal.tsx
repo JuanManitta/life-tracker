@@ -47,6 +47,15 @@ export default function ItemFormModal({
     if (!title.trim()) return
     setSaving(true)
     const now = Date.now()
+    // completedAt only tracks the "finished on" date. Keep it if the item
+    // was already done and still is, set it if it just became done, and
+    // clear it if it's leaving 'done' — never touched by unrelated edits.
+    const completedAt =
+      status === 'done'
+        ? initialItem?.status === 'done'
+          ? initialItem.completedAt ?? now
+          : now
+        : undefined
     const item = {
       id: initialItem?.id ?? generateId(),
       category,
@@ -56,6 +65,7 @@ export default function ItemFormModal({
       [creatorField]: creator.trim() || undefined,
       createdAt: initialItem?.createdAt ?? now,
       updatedAt: now,
+      completedAt,
     } as TrackedItem
     await onSave(item)
     setSaving(false)

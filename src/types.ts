@@ -11,6 +11,7 @@ export interface BaseItem {
   notes?: string
   createdAt: number // epoch ms
   updatedAt: number // epoch ms
+  completedAt?: number // epoch ms, set only when status becomes 'done'; unlike updatedAt it's not touched by later edits
 }
 
 export interface BookItem extends BaseItem {

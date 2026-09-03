@@ -25,14 +25,43 @@ async function fetchBookAuthor(title: string): Promise<string | undefined> {
   return typeof authorName === 'string' ? authorName : undefined
 }
 
+/**
+ * Filmaffinity-style titles often look like "La hija oscura" or
+ * "La entrega (The Drop) (2014)" — a Spanish title, an optional original
+ * title in parens, and an optional trailing release year in parens. TMDB's
+ * search matches literal title text, so a trailing "(2014)" or "(The Drop)"
+ * fragment tacked onto the query just makes it miss. This splits a raw title
+ * into the primary search query plus an alternate one (the parenthesized
+ * original title, if any) to retry with when the first search comes up empty.
+ */
+export function splitTitleForSearch(rawTitle: string): {
+  primary: string
+  alternate?: string
+} {
+  const parenGroups = [...rawTitle.matchAll(/\(([^)]+)\)/g)].map((m) => m[1].trim())
+  const withoutParens = rawTitle.replace(/\s*\([^)]*\)\s*/g, ' ').trim()
+  const alternate = parenGroups.find((g) => !/^\d{4}$/.test(g))
+  return {
+    primary: withoutParens || rawTitle.trim(),
+    alternate: alternate && alternate !== withoutParens ? alternate : undefined,
+  }
+}
+
+async function searchTmdbMovie(query: string): Promise<number | undefined> {
+  const res = await fetch(
+    `${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=es`
+  )
+  if (!res.ok) return undefined
+  const data = await res.json()
+  return data?.results?.[0]?.id
+}
+
 async function fetchMovieDirector(title: string): Promise<string | undefined> {
   if (!TMDB_API_KEY) return undefined
-  const searchRes = await fetch(
-    `${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}&language=es`
-  )
-  if (!searchRes.ok) return undefined
-  const searchData = await searchRes.json()
-  const movieId = searchData?.results?.[0]?.id
+  const { primary, alternate } = splitTitleForSearch(title)
+  const movieId =
+    (await searchTmdbMovie(primary)) ??
+    (alternate ? await searchTmdbMovie(alternate) : undefined)
   if (!movieId) return undefined
 
   const creditsRes = await fetch(
